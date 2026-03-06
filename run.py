@@ -1,3 +1,4 @@
+print("Script is starting...")
 import requests
 import re
 import urllib3
