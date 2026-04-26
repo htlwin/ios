@@ -4,62 +4,12 @@ import re
 import urllib3
 import time
 import threading
+import random  # Added for random code generation
 from urllib.parse import urlparse, parse_qs, urljoin
 import os
 import sys
-import json
-import uuid
-import hashlib
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# --- LICENSE SETTINGS ---
-CONFIG_FILE = ".app_license.json"
-DEVICE_ID_FILE = ".device_id"
-SECRET_SALT = "Chetstrinne9377"
-
-def get_device_id():
-    # ဖုန်းအတွက် Device ID အသစ်ထုတ်ခြင်း (သို့) ရှိပြီးသားကို ပြန်ယူခြင်း
-    if os.path.exists(DEVICE_ID_FILE):
-        with open(DEVICE_ID_FILE, "r") as f:
-            return f.read().strip()
-    else:
-        new_id = str(uuid.uuid4().hex)[:16].upper() # 16-လုံးပါသော ID
-        with open(DEVICE_ID_FILE, "w") as f:
-            f.write(new_id)
-        return new_id
-
-def verify_license():
-    device_id = get_device_id()
-    # Device ID နှင့် Secret Password ကိုပေါင်းပြီး Key အဖြစ် ပြောင်းလဲခြင်း
-    expected_key = hashlib.sha256((device_id + SECRET_SALT).encode()).hexdigest()[:20].upper()
-
-    # Key ထည့်ပြီးသားဖြစ်မဖြစ် စစ်ဆေးခြင်း
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                data = json.load(f)
-                if data.get("is_activated") and data.get("license_key") == expected_key:
-                    return True
-        except:
-            pass # Error ရှိပါက ကျော်သွားမည်
-
-    # Key မထည့်ရသေးပါက Device ID ကို ပြပြီး Key တောင်းပါမည်
-    print("\n[-] Unauthorized Access! Please activate your script.")
-    print(f"[*] Your Device ID: {device_id}")
-    print("[*] Please send this Device ID to the Admin to get your License Key.\n")
-    
-    user_key = input("[?] Enter your License Key: ").strip()
-
-    if user_key == expected_key:
-        print("\n[+] Activation Successful! Thank you.\n")
-        with open(CONFIG_FILE, "w") as f:
-            json.dump({"is_activated": True, "license_key": expected_key}, f)
-        return True
-    else:
-        print("\n[-] Invalid Key. Exiting...")
-        sys.exit()
-
 
 # --- SETTINGS ---
 PING_THREADS = 5
@@ -68,7 +18,8 @@ PING_INTERVAL = 0.1
 def check_real_internet():
     try:
         return requests.get("http://www.google.com", timeout=3).status_code == 200
-    except: return False
+    except: 
+        return False
 
 def high_speed_ping(auth_link, session, sid):
     """Auth Link ကို အဆက်မပြတ် Request ပို့ပေးခြင်း"""
@@ -76,13 +27,11 @@ def high_speed_ping(auth_link, session, sid):
         try:
             res = session.get(auth_link, timeout=5)
             print(f"[{time.strftime('%H:%M:%S')}] Pinging SID: {sid} (Status: OK)   ", end='\r')
-        except: break
+        except: 
+            break
         time.sleep(PING_INTERVAL)
 
 def start_process():
-    # ၁။ License အရင်စစ်ပါမည်
-    verify_license() 
-    
     print(f"[{time.strftime('%H:%M:%S')}] Turbo Script with Voucher Initialization...")
     
     while True:
@@ -93,7 +42,7 @@ def start_process():
             r = requests.get(test_url, allow_redirects=True, timeout=5)
             if r.url == test_url:
                 if check_real_internet():
-                    print(f"[{time.strftime('%H:%M:%S')}] Internet OK. Waiting...           ", end='\r')
+                    print(f"[{time.strftime('%H:%M:%S')}] Internet OK. Waiting...            ", end='\r')
                     time.sleep(5)
                     continue
             
@@ -114,10 +63,13 @@ def start_process():
             
             if sid:
                 # ၃။ Voucher ကို တစ်ကြိမ် "မဖြစ်မနေ" အရင်စမ်းသပ်ခြင်း
-                print(f"\n[*] Activating Session with Voucher API...")
+                # Generate a random 6-digit code
+                random_code = str(random.randint(100000, 999999))
+                print(f"\n[*] Activating Session with Voucher API (Trying Code: {random_code})...")
+                
                 voucher_api = f"{portal_host}/api/auth/voucher/"
                 try:
-                    v_res = session.post(voucher_api, json={'accessCode': '123456', 'sessionId': sid, 'apiVersion': 1}, timeout=5)
+                    v_res = session.post(voucher_api, json={'accessCode': random_code, 'sessionId': sid, 'apiVersion': 1}, timeout=5)
                     print(f"[+] Voucher API Response: {v_res.status_code}")
                 except:
                     print("[!] Voucher API Failed (Gateway might not require it)")
